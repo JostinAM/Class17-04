@@ -11,6 +11,7 @@ import android.view.View
 import android.view.ViewGroup
 
 import androidx.core.app.ActivityCompat
+import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -23,6 +24,14 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import cr.ac.menufragment.dao.UbicacionDao
+import cr.ac.menufragment.db.AppDatabase
+import cr.ac.menufragment.entity.Ubicacion
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.Date
+
 
 class MapsFragment : Fragment() {
 
@@ -31,6 +40,9 @@ class MapsFragment : Fragment() {
 
     ///
     private lateinit var locationRequest: LocationRequest
+
+    ///
+    private lateinit var ubicacionDao: UbicacionDao
 
 
 
@@ -46,6 +58,16 @@ class MapsFragment : Fragment() {
 
         floating.setOnClickListener {
             getLocation()
+
+//            val entity = Ubicacion(
+//                id = null,
+//                latitud = map.cameraPosition.target.latitude,
+//                longitud = map.cameraPosition.target.longitude,
+//                fecha = Date()
+//            )
+//
+//            insertEntity(entity)
+
         }
 
         return view
@@ -68,10 +90,13 @@ class MapsFragment : Fragment() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireContext())
 
         locationRequest = LocationRequest.create().apply {
-            interval = 10000
-            fastestInterval = 5000
+            interval = 1000
+            fastestInterval = 500
             priority = LocationRequest.PRIORITY_HIGH_ACCURACY
         }
+
+        ubicacionDao = AppDatabase.getInstance(this).ubicacionDao()
+
 
 
     }
@@ -86,6 +111,16 @@ class MapsFragment : Fragment() {
                     map.addMarker(MarkerOptions().position(currentLatLng).title(Config.myProperty))
                     map.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15f))
                     fusedLocationClient.removeLocationUpdates(this)
+
+                    val entity = Ubicacion(
+                        id = null,
+                        latitud = location.latitude,
+                        longitud = location.longitude,
+                        fecha = Date()
+                    )
+
+                    insertEntity(entity)
+
                 }
             }, Looper.getMainLooper())
         }
@@ -103,5 +138,13 @@ class MapsFragment : Fragment() {
         }
     }
 
+    private fun insertEntity(entity: Ubicacion) {
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                ubicacionDao.insert(entity)
+            }
+        }
+
+    }
 
 }
